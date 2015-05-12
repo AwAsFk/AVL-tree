@@ -52,37 +52,28 @@ private:
     int height(DictionaryNode * rootOfNode){
     	if (!rootOfNode)
     		return 0;
-        // int x1 = 0 , x2 = 0;
-        // // if (rootOfNode->left)
-        // x1 = height(rootOfNode->left) + 1;
-        // // if (rootOfNode->right)
-        // x2 = height(rootOfNode->right) + 1;
-        // return (x1 > x2 ? x1 : x2);
         return max(height(rootOfNode->left), height(rootOfNode->right)) + 1;
     };
 
-    void print(DictionaryNode * node, int h, int level, int indent){
-    	if (h > 0){
-    		// int heightOfNode = height(node);
-    		int rootHeight = height(root);
-    		int value = (int)pow(2, rootHeight - h); // max number of elements
-    		int length = (value - 1) * 2; // length for all elements
-    		int x = 10 - length/2 + indent; // indent
-    		cout << setw(x);
-    		if (level == h){
-    			cout << node->key;
-    		}
-    		else if (!node){
-    			cout << "-";
-    		}
-    		else if (h > level){
-    			print(node->left, h, --level, indent);
-    			indent += 2;
-    			print(node->right, h, --level, indent);
-    			indent += 2;
-    		}
-    	}
-    }
+    void postorder(DictionaryNode * node, int indent = 0)
+	{
+	    if(node != NULL) {
+	        if(node->right) {
+	            postorder(node->right, indent+4);
+	        }
+	        if (indent) {
+	            std::cout << std::setw(indent) << ' ';
+	        }
+	        if (node->right) {
+	            std::cout<<" /\n" << std::setw(indent) << ' ';
+	        }
+	        std::cout<< node->key << "\n ";
+	        if(node->left) {
+	            std::cout << std::setw(indent) << ' ' <<" \\\n";
+	            postorder(node->left, indent+4);
+	        }
+	    }
+	}
 
     void removeSubTree(DictionaryNode *& node){
     	if (node){
@@ -98,9 +89,7 @@ private:
 
     void insertSubTree(DictionaryNode *& node){
     	if (node){
-    		insert(node, node->key, node->info);
-    		numberOfElements++;
-    		// this.balanceFactor = node->balanceFactor;
+    		root = insert(root, node->key, node->info);
     		if (node->left)
     			insertSubTree(node->left);
     		if (node->right)
@@ -112,7 +101,8 @@ private:
     void copyAll(const Dictionary & dictionary){
     	root = NULL;
     	numberOfElements = 0;
-    	insertSubTree(dictionary.root);
+    	DictionaryNode * node = dictionary.root;
+    	insertSubTree(node);
     };
 
     void calculateBalanceFactor(DictionaryNode *& node){
@@ -129,53 +119,42 @@ private:
 
     DictionaryNode * leftRotation(DictionaryNode * node){
     	DictionaryNode * subtree = node->right;
-		// subtree = node->right;
  		// doble-left rotation
- 		if (subtree->balanceFactor == -1){
+ 		/*if (subtree->balanceFactor == -1){
  			// rigth rotation
  			node->right = subtree->left;
  			subtree->left = subtree->left->right;
  			node->right->right = subtree;
  			subtree = node->right;
- 		}
+ 			/*node->right = rightRotation(subtree);
+ 			subtree = node->right;
+ 		}*/
  		// left rotation
  		node->right = subtree->left;
  		subtree->left = node;
  		calculateBalanceFactor(node);
  		calculateBalanceFactor(subtree);
  		return subtree;
- 		// node = subtree;
- 		/*if (node == root)
- 			root = subtree;
- 		else if (ancestor->left == node)
- 			ancestor->left = subtree;
- 		else if (ancestor->right == node)
- 			ancestor->right = subtree;  */
     }
 
     DictionaryNode * rightRotation(DictionaryNode * node){
     	DictionaryNode * subtree = node->left;
  		// double-right rotation
- 		if (subtree->balanceFactor == 1){
+ 		/*if (subtree->balanceFactor == 1){
  			// left rotation
  			node->left = subtree->right;
  			subtree->right = subtree->right->left;
  			node->left->left = subtree;
  			subtree = node->left;
- 		}
+ 			/*node->left = leftRotation(subtree);
+ 			subtree = node->left;
+ 		}*/
  		// right rotation
  		node->left = subtree->right;
  		subtree->right = node;
         calculateBalanceFactor(node);
  		calculateBalanceFactor(subtree);
  		return subtree;
- 		// node = subtree;
- 		/*if (node == root)
- 			root = subtree;
- 		else if (ancestor->left == node)
- 			ancestor->left = subtree;
- 		else if (ancestor->right == node)
- 			ancestor->right = subtree;*/
     }
 
 	DictionaryNode * insert(DictionaryNode * node, const Key & k, const Info & i){
@@ -192,148 +171,88 @@ private:
 		return balance(node);
 	}
 
+	DictionaryNode * findMin(DictionaryNode * node, DictionaryNode *& ancestor){
+		if (node){
+			if (node->left){
+				ancestor = node;
+				return findMin(node->left, ancestor);
+			}
+			else return node;
+		}
+		return NULL;
+	}
+
+	DictionaryNode * remove(DictionaryNode * node, const Key & k){
+		if (!node) return NULL;
+		if (node->key > k)
+			node->left = remove(node->left, k);
+		else if (node->key < k)
+			node->right = remove(node->right, k);
+		else{
+			// easy way
+			if (!node->left || !node->right){
+            	DictionaryNode * tmp = node->left;
+            	if (!tmp){
+                //we are not sure if right exists, but we don't care
+                	tmp = node->right;
+            	}
+            	if (node == root)
+                    root = tmp;
+	            delete node;
+	            node = NULL;
+	            numberOfElements--;
+	            return balance(tmp);
+	        }
+	        // hard case
+	        else{
+	        	DictionaryNode * ancestor = node;
+	        	DictionaryNode *nodeToReplace = findMin(node->right, ancestor);
+		        if (node->right == nodeToReplace){
+		            node->right = nodeToReplace->right;
+		        }
+		        else{
+		            ancestor->left = nodeToReplace->right;
+		        }
+		        nodeToReplace->left = node->left;
+		        nodeToReplace->right = node->right;
+                if (node == root)
+                    root = nodeToReplace;
+		        delete node;
+		        node = NULL;
+		        numberOfElements--;
+		        // calculateBalanceFactor(root);
+		        return balance(nodeToReplace);
+	        }
+        }
+        return balance(node);
+	}
+
+
+
 	DictionaryNode * balance(DictionaryNode * node){
     	// DictionaryNode * node = root;
     	calculateBalanceFactor(node);
     	if (node){
     		// if unbalanced
-    		// DictionaryNode * subtree = node;
 	    	if (node->balanceFactor > 1 || node->balanceFactor < -1){
 	    		// if tree is right heavy
 	    		if (node->balanceFactor > 1){
-	    			return leftRotation(node);
-	    			/*subtree = node->right;
-	    			// doble-left rotation
-	    			if (subtree->balanceFactor == -1){
-	    				// rigth rotation
-	    				node->right = subtree->left;
-	    				subtree->left = subtree->left->right;
-	    				node->right->right = subtree;
-	    				subtree = node->right;
+	    			if (node->right->balanceFactor == -1){
+	    				node->right = rightRotation(node->right);
 	    			}
-	    			// left rotation
-	    			node->right = subtree->left;
-	    			subtree->left = node;*/
-
-	    			/*if (node == root)
-	    				root = subtree;
-	    			else if (ancestor->left == node)
-	    				ancestor->left = subtree;
-	    			else if (ancestor->right == node)
-	    				ancestor->right = subtree;*/
+	    			return leftRotation(node);
 	    		}
 	    		// if tree is left heavy
 	    		else if (node->balanceFactor < -1){
-	    			return rightRotation(node);
-	    			/*subtree = node->left;
-	    			// double-right rotation
-	    			if (subtree->balanceFactor == 1){
-	    				// left rotation
-	    				node->left = subtree->right;
-	    				subtree->right = subtree->right->left;
-	    				subtree->right->left = subtree;
-	    				subtree = node->left;
+	    			if (node->left->balanceFactor == 1){
+	    				node->left = leftRotation(node->left);
 	    			}
-	    			// right rotation
-	    			node->left = subtree->right;
-	    			subtree->right = node;
-	    			if (node == root)
-	    				root = subtree;
-	    			else if (ancestor->left == node)
-	    				ancestor->left = subtree;
-	    			else if (ancestor->right == node)
-	    				ancestor->right = subtree;*/
-	    		}
-	    		/*if (!ancestor)
-	    			root = node;
-	    		else if (ancestor->left == node)
-	    			ancestor->left = node;
-	    		else if (ancestor->right == node)
-	    			ancestor->right = node;*/
-	    		// calculateBalanceFactor(root);
-	    	}
-	    	return node;
-	    	/*if (node->left)
-	    		balance(node->left, node);
-	    	if (node->right)
-	    		balance(node->right, node);*/
-	    	/*if (subtree->left)
-	    		balance(subtree->left, subtree);
-	    	if (subtree->right)
-	    		balance(subtree->right, subtree);*/
-    	}
-    }
-
-
-    // void balance(DictionaryNode * node, DictionaryNode * ancestor){
-    // 	// DictionaryNode * node = root;
-    // 	if (node){
-    // 		// if unbalanced
-    // 		// DictionaryNode * subtree = node;
-	   //  	if (node->balanceFactor > 1 || node->balanceFactor < -1){
-	   //  		// if tree is right heavy
-	   //  		if (node->balanceFactor > 1){
-	   //  			node = leftRotation(node);
-	   //  			/*subtree = node->right;
-	   //  			// doble-left rotation
-	   //  			if (subtree->balanceFactor == -1){
-	   //  				// rigth rotation
-	   //  				node->right = subtree->left;
-	   //  				subtree->left = subtree->left->right;
-	   //  				node->right->right = subtree;
-	   //  				subtree = node->right;
-	   //  			}
-	   //  			// left rotation
-	   //  			node->right = subtree->left;
-	   //  			subtree->left = node;*/
-
-	   //  			/*if (node == root)
-	   //  				root = subtree;
-	   //  			else if (ancestor->left == node)
-	   //  				ancestor->left = subtree;
-	   //  			else if (ancestor->right == node)
-	   //  				ancestor->right = subtree;*/
-	   //  		}
-	   //  		// if tree is left heavy
-	   //  		else if (node->balanceFactor < -1){
-	   //  			node = rightRotation(node);
-	   //  			subtree = node->left;
-	   //  			// double-right rotation
-	   //  			if (subtree->balanceFactor == 1){
-	   //  				// left rotation
-	   //  				node->left = subtree->right;
-	   //  				subtree->right = subtree->right->left;
-	   //  				subtree->right->left = subtree;
-	   //  				subtree = node->left;
-	   //  			}
-	   //  			// right rotation
-	   //  			node->left = subtree->right;
-	   //  			subtree->right = node;
-	   //  			if (node == root)
-	   //  				root = subtree;
-	   //  			else if (ancestor->left == node)
-	   //  				ancestor->left = subtree;
-	   //  			else if (ancestor->right == node)
-	   //  				ancestor->right = subtree;
-	   //  		}
-	   //  		if (!ancestor)
-	   //  			root = node;
-	   //  		else if (ancestor->left == node)
-	   //  			ancestor->left = node;
-	   //  		else if (ancestor->right == node)
-	   //  			ancestor->right = node;
-	   //  		calculateBalanceFactor(root);
-	   //  	}
-	   //  	if (node->left)
-	   //  		balance(node->left, node);
-	   //  	if (node->right)
-	   //  		balance(node->right, node);
-	   //  	/*if (subtree->left)
-	   //  		balance(subtree->left, subtree);
-	   //  	if (subtree->right)
-	   //  		balance(subtree->right, subtree);*/
-    // 	}
-    // }
+	    			return rightRotation(node);
+                }
+            }
+        }
+        return node;
+	}
 
 public:
     Dictionary(){
@@ -361,78 +280,12 @@ public:
         return (numberOfElements == 0);
     };
 
-    /*bool insert(const Key & k, const Info & i){
-        // empty
-        if (root == NULL){
-            root = new DictionaryNode(k, i, 0, NULL, NULL);
-            numberOfElements++;
-            return true;
-        }
-        // not empty
-        // if true - left, otherwise - right
-        bool direction;
-        DictionaryNode * ancestor = NULL;
-        DictionaryNode * current = root;
-        while (current != NULL && current->key != k){
-            ancestor = current;
-            if (current->key > k){
-                current = current->left;
-                direction = true;
-            }
-            else{
-                current = current->right;
-                direction = false;
-            }
-        }
-        // if NULL
-        if (!current){
-            current = new DictionaryNode(k, i, 0, NULL, NULL);
-            direction ? ancestor->left = current : ancestor->right = current;
-            numberOfElements++;
-            calculateBalanceFactor(root);
-            balance(root, NULL);
-            return true;
-        };
-        return false;
-    };*/
-
     bool insert(const Key & k, const Info & i){
+    	int n = size();
         root = insert(root, k, i);
-    	//else insert(root, k, i);
-    	return true;
-
-        // empty
-        /*if (root == NULL){
-            root = new DictionaryNode(k, i, 0, NULL, NULL);
-            numberOfElements++;
-            return true;
-        }
-        // not empty
-        // if true - left, otherwise - right
-        bool direction;
-        DictionaryNode * ancestor = NULL;
-        DictionaryNode * current = root;
-        while (current != NULL && current->key != k){
-            ancestor = current;
-            if (current->key > k){
-                current = current->left;
-                direction = true;
-            }
-            else{
-                current = current->right;
-                direction = false;
-            }
-        }
-        // if NULL
-        if (!current){
-            current = new DictionaryNode(k, i, 0, NULL, NULL);
-            direction ? ancestor->left = current : ancestor->right = current;
-            numberOfElements++;
-            calculateBalanceFactor(root);
-            balance(root, NULL);
-            return true;
-        };
-        return false;*/
+        if (size() > n)
+        	return true;
+        else return false;
     };
 
     void removeAll(){
@@ -455,125 +308,43 @@ public:
 
     void print(){
     	cout << "Start" << endl;
-    	int h = height(root);
-    	int level = h;
-    	while(h > 0){
-    		print(root, h--, level, 0);
-    		cout << endl;
-    	}
+    	postorder(root);
     	cout << "End" << endl;
     }
 
     bool remove(const Key & k){
-        DictionaryNode * nodeToDelete = root;
-        DictionaryNode * parent = NULL;
-        // searching for the element
-        while (nodeToDelete != NULL && nodeToDelete->key != k){
-            parent = nodeToDelete;
-            if(nodeToDelete->key > k)
-                nodeToDelete = nodeToDelete->left;
-            else nodeToDelete = nodeToDelete->right;
+        // int n = size();
+        DictionaryNode * node = remove(root, k);
+        if (height(node) > height(root))
+            root = node;
+        if (!node && size() > 0){
+        	return false;
         }
-        // checking if element is found or not
-        if (!nodeToDelete)
-            return false;
-        // if element is leaf or have only one child
-        if (!nodeToDelete->left || !nodeToDelete->right){
-            DictionaryNode * tmp = nodeToDelete->left;
-            if (!tmp){
-                //we are not sure if right exists, but we don't care
-                tmp = nodeToDelete->right;
-            }
-            // if we deleting root element
-            if (!parent){
-                root = tmp;
-            }
-            else if (parent->left == nodeToDelete)
-                parent->left = tmp;
-            else parent->right = tmp;
-            delete nodeToDelete;
-            numberOfElements--;
-            calculateBalanceFactor(root);
-            balance(root, NULL);
-            return true;
+        else {
+        	return true;
         }
-        // hard case. we want to delete node which has 2 childs
-        DictionaryNode *nodeToReplace = nodeToDelete->right;
-        DictionaryNode *rparent = nodeToDelete;
-        while(nodeToReplace->left){
-            rparent = nodeToReplace;
-            nodeToReplace = nodeToReplace->left;
-        }
-        if (rparent == nodeToDelete){
-            nodeToDelete->right = nodeToReplace->right;
-            //nodeToReplace->left = nodeToDelete->left;
-        }
-        else{
-            rparent->left = nodeToReplace->right;
-        }
-        nodeToReplace->left = nodeToDelete->left;
-        nodeToReplace->right = nodeToDelete->right;
-        if (!parent){
-            root = nodeToReplace;
-        }
-        else if (parent->left == nodeToDelete)
-            parent->left = nodeToReplace;
-        else parent->right = nodeToReplace;
-        delete nodeToDelete;
-        calculateBalanceFactor(root);
-        balance(root, NULL);
-        numberOfElements--;
-        return true;
     };
 };
 
-/*void func(int *& ptr){
-    ptr = &gl_var;
-    cout << *ptr << " " << ptr << endl;
-}*/
-
 int main(){
-    /*int x = 15;
-    int *ptr = &x;
-    cout << *ptr << " " << ptr << endl;
-    func(ptr);
-    cout << *ptr << " " << ptr << endl;*/
-
     Dictionary<int, int> dict1;
-    dict1.insert(5, 1);
-    //dict1.insert(5, 1);
-    dict1.insert(4, 1);
-    dict1.insert(9, 1);
-    dict1.insert(1, 1);
-    dict1.insert(0, 1);
-    dict1.insert(11, 1);
-    dict1.insert(10, 1);
-    dict1.insert(7, 1);
-    dict1.insert(6, 1);
-    dict1.insert(8, 1);
-    dict1.insert(12, 1);
-    dict1.insert(13, 1);
-
-
-    /*dict1.insert(6, 1);
-    dict1.insert(8, 1);
-    dict1.insert(13, 1);
-    dict1.insert(15, 1);
-    dict1.insert(21, 1);
-    dict1.insert(3, 1);*/
-    //dict1.remove(0);
-    // dict1.print();
-    dict1.display();
-    cout << "Height = " << dict1.height() << " size = " << dict1.size() << endl;
-    // dict1.func();
-
-    /*Dictionary<int, int> dict2(dict1);
-    dict2.display();
-    cout << "Height = " << dict2.height() << endl;
     dict1.removeAll();
+    dict1.remove(5);
+    dict1.insert(10, 1);
+    dict1.insert(15, 1);
+    dict1.insert(7, 1);
+    dict1.insert(21, 1);
+    dict1.insert(13, 1);
+    dict1.insert(14, 1);
     dict1.display();
-    cout << "Height = " << dict1.height() << endl;
-    dict2.remove(9);
-    dict2.display();*/
+    dict1.insert(22, 1);
+    dict1.insert(20, 1);
+    dict1.insert(25, 1);
+    // dict1.display();
+    //dict1.remove(20);
+    dict1.display();
+    cout << "IsEmpty: " << dict1.isEmpty()
+        << " Height = " << dict1.height() << " Size = " << dict1.size() << endl;
+    dict1.print();
     return 0;
 }
